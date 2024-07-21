@@ -1,10 +1,8 @@
--- server
-
 local function getUUID(player)
     return string.match(player, "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x")
 end
 
-local function broadcastPlayerList()
+local function fetchPlayerData()
     local player_ents = Osi.DB_Players:Get(nil)
     local player_data = {}
     for _, ent in ipairs(player_ents) do
@@ -18,7 +16,11 @@ local function broadcastPlayerList()
             table.insert(player_data, data)
         end
     end
+    return player_data
+end
 
+local function broadcastPlayerList()
+    local player_data = fetchPlayerData()
     local players_payload = Ext.Json.Stringify(player_data)
     _P("players_payload" .. players_payload)
     Ext.Net.BroadcastMessage("player_list", players_payload)
@@ -49,17 +51,13 @@ function OnLoad()
 
 end
 
--- Ext.Events.StatsLoaded:Subscribe(OnStatsLoaded)
-
 Ext.Events.GameStateChanged:Subscribe(function(e)
+    ---@diagnostic disable-next-line: undefined-field
     _P(e.ToState)
+    ---@diagnostic disable-next-line: undefined-field
     if e.FromState == "LoadLevel" and e.ToState == "Sync" then
         OnLoad()
     end
-    -- local player = "c9b1c41d-7b5e-f29b-daf4-da21d88f30dc"
-    -- local wyll = "c774d764-4a17-48dc-b470-32ace9ce447d"
-    -- local astarion = "c7c13742-bacd-460a-8f65-f864fe41f255"
-    -- _P(player)
 end)
 
 
