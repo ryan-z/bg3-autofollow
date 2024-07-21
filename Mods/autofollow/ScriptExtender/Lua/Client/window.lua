@@ -1,53 +1,73 @@
 -- client
 
-local playerList = {}
 local playerButtonHandles = {} -- Store button handles here
+
+
 
 local function clearPlayerButtons()
     for _, handle in ipairs(playerButtonHandles) do
-        Follow_window:RemoveChild(handle) -- Remove each button using the handle
+        UserTable:RemoveChild(handle) -- Remove each button using the handle
     end
-    playerButtonList = {} -- Clear the list after removing buttons
 end
 
 local function onStopClicked()
-    local data = { source = "c9b1c41d-7b5e-f29b-daf4-da21d88f30dc" }  -- Replace this with actual client UUID
-    Ext.ClientNet.PostMessageToServer("request_stop_follow", Ext.Json.Stringify(data))
+    Ext.ClientNet.PostMessageToServer("request_stop_follow", "")
 end
 
-local function setupFollowWindow()
-    Follow_window = Ext.IMGUI.NewWindow("Auto Follow")
-    Follow_window.AlwaysAutoResize = true
 
-    -- Add a 'Refresh Players' button
-    Follow_window:AddButton("Refresh Players").OnClick = function()
-        Ext.ClientNet.PostMessageToServer("request_players", "")
-    end
-
-    -- Stop button to regain control
-    Follow_window:AddButton("Stop").OnClick = onStopClicked
-
-end
 
 local function updatePlayerList(payload)
-    playerList = Ext.Json.Parse(payload)
-    _P("player list is..." .. Ext.Json.Stringify(playerList))
+    local player_list = Ext.Json.Parse(payload)
 
     clearPlayerButtons() -- Clear existing buttons before adding new ones
+    
+    local currentRow = nil
+    local buttonCount = 0
+    for _, obj in ipairs(player_list) do
+        if buttonCount % 2 == 0 then  -- Start a new row for every two buttons
+            currentRow = UserTable:AddRow()
+        end
 
-    -- Add a button for each player in the player list
-    for index, uuid in ipairs(playerList) do
-        local buttonLabel = "Player " .. index
-        local buttonHandle = Follow_window:AddButton(buttonLabel) -- Store the handle when adding the button
+        local buttonLabel = obj.name
+        local buttonHandle = currentRow ~= nil and currentRow:AddCell():AddButton(buttonLabel)
         buttonHandle.OnClick = function()
             local data = {
-                source = "c9b1c41d-7b5e-f29b-daf4-da21d88f30dc",  -- Replace this with actual client UUID fetching method
-                target = uuid
+                target = obj.uuid
             }
             Ext.ClientNet.PostMessageToServer("request_follow", Ext.Json.Stringify(data))
         end
-        table.insert(playerButtonHandles, buttonHandle) -- Store the handle for later removal
+        table.insert(playerButtonHandles, buttonHandle)
+        buttonCount = buttonCount + 1
     end
+end
+
+-- local function addRefreshButton()
+--     local iconPath = "refresh.dds"  -- Path to the converted image
+--     local size = {24, 24}
+--     local uv0 = {0, 0}  -- Top-left corner of the texture
+--     local uv1 = {1, 1}  -- Bottom-right corner of the texture
+--     local refreshButton = Follow_window:AddImageButton("Refresh", iconPath, size, uv0, uv1)
+
+--     refreshButton.OnClick = function()
+--         print("Refresh button clicked!")
+--         updatePlayerList()  -- Refresh data
+--     end
+-- end
+
+local function setupFollowWindow()
+    Follow_window = Ext.IMGUI.NewWindow("Auto Follow")
+    Follow_window.AlwaysAutoResize = false
+
+    -- -- Add a 'Refresh Players' button
+    -- Follow_window:AddButton("Refresh Players").OnClick = function()
+    --     Ext.ClientNet.PostMessageToServer("request_players", "")
+    -- end
+
+    -- Stop button to regain control
+    Follow_window:AddButton("Stop").OnClick = onStopClicked
+    -- addRefreshButton()
+    Follow_window:AddSeparator()
+    UserTable = Follow_window:AddTable("Something", 2)
 end
 
 Ext.RegisterNetListener("player_list", function(channel, payload, user)
@@ -66,4 +86,5 @@ end)
 function OnLoad()
     _P("Session loaded")
     setupFollowWindow()
+    Ext.ClientNet.PostMessageToServer("request_players", "")
 end

@@ -5,52 +5,49 @@ local function getUUID(player)
 end
 
 local function broadcastPlayerList()
-    local players = Osi.DB_Players:Get(nil)
-    
-    local uuids = {}
-    -- loop over all the players here for debugging
-    for i, player in ipairs(players) do
-        if player[1] then  -- Check if the first element exists
-            local uuid = getUUID(player[1])
-            if uuid then
-                table.insert(uuids, uuid)
-            end
-            print(uuid)  -- Print the UUID for debugging
+    local player_ents = Osi.DB_Players:Get(nil)
+    local player_data = {}
+    for _, ent in ipairs(player_ents) do
+        if ent[1] then
+            local entity_id = tostring(ent[1])
+            local entity_obj = Ext.Entity.Get(entity_id)
+            local data = {
+                name = Ext.Loca.GetTranslatedString(entity_obj.DisplayName.NameKey.Handle.Handle),
+                uuid = getUUID(entity_id)
+            }
+            table.insert(player_data, data)
         end
     end
 
-    _P("Broadcasting player list")
-    local players_payload = Ext.Json.Stringify(uuids)
-    _P(players_payload)
+    local players_payload = Ext.Json.Stringify(player_data)
+    _P("players_payload" .. players_payload)
     Ext.Net.BroadcastMessage("player_list", players_payload)
 end
 
+function PeerToUserID(u)
+    return (u & 0xffff0000) | 0x0001
+end
+
 function OnLoad()
-    -- on load, send player list to the clients
-    broadcastPlayerList()
-    -- someone requested the players
-    Ext.RegisterNetListener("request_players", function(channel, payload, user)
+    Ext.RegisterNetListener("request_players", function(channel, payload, userId)
         broadcastPlayerList()
     end)
 
-
-    Ext.RegisterNetListener("request_follow", function(channel, payload, user)
+    Ext.RegisterNetListener("request_follow", function(channel, payload, userId)
         _P("following player")
-        _P(payload)
+        local requester_uuid = tostring(Osi.GetCurrentCharacter(PeerToUserID(userId)))
+        _D(requester_uuid)
         local follow_data = Ext.Json.Parse(payload)
-        Osi.PROC_Follow(follow_data.source, follow_data.target)
+        Osi.PROC_Follow(requester_uuid, follow_data.target)
     end)
 
-    Ext.RegisterNetListener("request_stop_follow", function(channel, payload, user)
+    Ext.RegisterNetListener("request_stop_follow", function(channel, payload, userId)
         _P("stop following player")
-        local data = Ext.Json.Parse(payload)
-        _P(data.source .. " requested to stop follow")
-        Osi.PROC_StopFollow(data.source)
+        local requester_uuid = tostring(Osi.GetCurrentCharacter(PeerToUserID(userId)))
+        Osi.PROC_StopFollow(requester_uuid)
     end)
 
 end
-
-
 
 -- Ext.Events.StatsLoaded:Subscribe(OnStatsLoaded)
 
@@ -66,3 +63,12 @@ Ext.Events.GameStateChanged:Subscribe(function(e)
 end)
 
 
+Ext.Events.NetMessage:Subscribe(function(e)
+    if  e.Name == "NETMSG_PLAYER_CONNECT" or
+        e.Name == "NETMSG_CLIENT_JOINED" or
+        e.Name == "NETMSG_PLAYER_LEFT" or
+        e.Name == "NETMSG_CLIENT_LEFT" then
+            _P("player count change detected")
+        broadcastPlayerList()
+    end
+end)
