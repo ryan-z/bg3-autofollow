@@ -6,7 +6,7 @@
     <children>
         <node id="Dependencies"/>
             <node id="ModuleInfo">
-                <attribute id="Author" type="LSWString" value="Ryan Zaki"/> 
+                <attribute id="Author" type="LSWString" value="ritz"/> 
                 <attribute id="CharacterCreationLevelName" type="FixedString" value=""/>
                 <attribute id="Description" type="LSWString" value="autofollow"/> 
                 <attribute id="Folder" type="LSWString" value="autofollow"/> 

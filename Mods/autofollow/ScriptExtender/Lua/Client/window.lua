@@ -2,8 +2,6 @@
 
 local playerButtonHandles = {} -- Store button handles here
 
-
-
 local function clearPlayerButtons()
     for _, handle in ipairs(playerButtonHandles) do
         UserTable:RemoveChild(handle) -- Remove each button using the handle
@@ -14,8 +12,6 @@ local function onStopClicked()
     Ext.ClientNet.PostMessageToServer("request_stop_follow", "")
 end
 
-
-
 local function updatePlayerList(payload)
     local player_list = Ext.Json.Parse(payload)
 
@@ -24,7 +20,7 @@ local function updatePlayerList(payload)
     local currentRow = nil
     local buttonCount = 0
     for _, obj in ipairs(player_list) do
-        if buttonCount % 2 == 0 then  -- Start a new row for every two buttons
+        if buttonCount % 2 == 0 then
             currentRow = UserTable:AddRow()
         end
 
@@ -41,31 +37,27 @@ local function updatePlayerList(payload)
     end
 end
 
--- local function addRefreshButton()
---     local iconPath = "refresh.dds"  -- Path to the converted image
---     local size = {24, 24}
---     local uv0 = {0, 0}  -- Top-left corner of the texture
---     local uv1 = {1, 1}  -- Bottom-right corner of the texture
---     local refreshButton = Follow_window:AddImageButton("Refresh", iconPath, size, uv0, uv1)
-
---     refreshButton.OnClick = function()
---         print("Refresh button clicked!")
---         updatePlayerList()  -- Refresh data
---     end
--- end
+local function addRefreshButton()
+    local refreshButton = TopRow:AddCell():AddButton("Refresh")
+    local tooltip = refreshButton:Tooltip()
+    tooltip:AddText("Refresh player list")
+    refreshButton.OnClick = function()
+        _P("Refresh button clicked!")
+        Ext.ClientNet.PostMessageToServer("request_players", "")
+    end
+end
 
 local function setupFollowWindow()
     Follow_window = Ext.IMGUI.NewWindow("Auto Follow")
     Follow_window.AlwaysAutoResize = false
 
-    -- -- Add a 'Refresh Players' button
-    -- Follow_window:AddButton("Refresh Players").OnClick = function()
-    --     Ext.ClientNet.PostMessageToServer("request_players", "")
-    -- end
-
-    -- Stop button to regain control
-    Follow_window:AddButton("Stop").OnClick = onStopClicked
-    -- addRefreshButton()
+    TopTable = Follow_window:AddTable("Something", 2)
+    TopRow = TopTable:AddRow()
+    local stop_button = TopRow:AddCell():AddButton("Stop")
+    local tooltip = stop_button:Tooltip()
+    tooltip:AddText("Regain control of your character")
+    stop_button.OnClick = onStopClicked
+    addRefreshButton()
     Follow_window:AddSeparator()
     UserTable = Follow_window:AddTable("Something", 2)
 end
